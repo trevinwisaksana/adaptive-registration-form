@@ -5,6 +5,8 @@ validation, and state machine; iOS and web are **thin renderers** that only know
 step `type`s. Full design: [`plan.md`](plan.md). Exact wire format every builder implemented
 against: [`docs/contract.md`](docs/contract.md).
 
+![System design overview](system-design.gif)
+
 ## What this demonstrates (mapped to plan.md)
 
 | plan.md section | What to look at |
