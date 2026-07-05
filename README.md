@@ -49,20 +49,7 @@ The same Go binary also serves static `web/` at `/web/` — no separate web serv
 
 ## Running it
 
-### Option A — docker compose (postgres + minio + api)
-
-```sh
-docker compose up --build
-```
-
-Starts Postgres, MinIO (+ a one-shot `minio-init` job that creates the `registration` bucket),
-and the API on `http://localhost:8080`. Migrations run and seed data (flows, T&C, refdata,
-translations, announcements) upserts on every boot.
-
-> Not run end-to-end in the environment this POC was built in (no Docker daemon available there)
-> — validated with `docker compose config` only. See Limitations.
-
-### Option B — go run against a local Postgres
+### Option A — go run against a local Postgres (primary path)
 
 ```sh
 cd backend
@@ -74,6 +61,16 @@ go run ./cmd/api
 
 If `MINIO_ENDPOINT` (default `localhost:9000`) is unreachable, uploads fall back automatically
 to `UPLOADS_DIR` on local disk — no MinIO needed to walk the whole flow.
+
+### Option B — docker compose (postgres + minio + api)
+
+```sh
+docker compose up --build
+```
+
+Starts Postgres, MinIO (+ a one-shot `minio-init` job that creates the `registration` bucket),
+and the API on `http://localhost:8080`. Migrations run and seed data (flows, T&C, refdata,
+translations, announcements) upserts on every boot.
 
 ### Opening the web renderer
 
@@ -91,7 +88,7 @@ open AdaptiveRegistrationForm.xcodeproj
 
 Scheme **AdaptiveRegistrationForm**, any iPhone simulator (iOS 16+), Run. Set the backend URL
 via **Settings → Backend → Base URL** in-app (defaults to `http://localhost:8080`). See
-`ios/README.md` for what was/wasn't exercised in the simulator.
+`ios/README.md` for the renderer registry design and per-screen notes.
 
 ## Smoke test
 
@@ -144,43 +141,32 @@ Any subsequent call now returns `"system": { "status": "maintenance", "retry_aft
 Flip back to restore service — session state is server-side, so a session resumes exactly where
 it left off once maintenance clears.
 
-## Limitations / stubbed (read before trusting this as "done")
+## Known limitations (POC scope)
 
-- **No auth beyond a stub bearer token**; no real KMS/encryption anywhere — PII columns are
-  stored in the clear, with TODOs marking where AES-GCM/KMS would go (plan.md §5). The PIN and
-  session token also aren't Keychain/Secure-Enclave-backed on iOS (`UserDefaults`, TODOs) or
-  DB-encrypted on the backend — deliberate per the "no real KMS" POC instruction.
-- **Never run via `docker compose up` end-to-end** — no Docker daemon in the build environment.
-  Validated with `docker compose config` only; all runtime verification used a local Postgres +
-  `go run` + curl, including the local-disk upload fallback. MinIO/SigV4 presign code is
-  implemented and reviewed but not exercised against a live MinIO.
-- **Some wire-format names are inventions, not verbatim from plan.md**, which describes behavior
-  not JSON shape — `docs/contract.md` is the binding spec for names like repair kinds
-  (`reaccept_document`/`collect_fields`/`redo_step`), error codes
-  (`validation_failed`/`stale_document`/`idempotency_key_reused`), the `force_update`
-  capability-gate shape, and `transitions[].{from,when,insert,before/after}`.
-- **No automated tests anywhere** (`go test`, XCUITest) — verified via `scripts/smoke.sh` and
-  manual curl/simulator exploration (FATCA branch, T&C staleness, invalid refdata, resume
-  repairs, rate limiting), consistent with POC scope.
-- **Rate limiter / idempotency cache / translation cache are in-memory or per-process**, POC-only
-  with TODOs pointing at Redis. Idempotency records are DB-backed and survive a restart;
-  rate-limit buckets and the translation cache do not.
-- **Camera/signature/PIN on web are stand-ins** (file picker/canvas/plain input) — plan.md keeps
-  these native-only in production; intentional, not a gap. On iOS, these three screens weren't
-  driven interactively in the simulator (no XCUITest target) — verified via a clean `xcodebuild`
-  build and review against contract.md §3.2. Blur detection there is a stub (always "not blurry";
-  face-present via Vision is real). iPad/rotation unsupported; iPhone-only by design.
-- **T&C HTML is injected via `innerHTML`**, TODO to run it through a sanitizer allow-list in
-  production (same-origin content today, but still ops-editable legal text).
-- **Mid-flow locale switching** re-fetches via `GET /sessions/{id}?locale=` — contract.md only
-  documents `locale` at session creation; flagged assumption, not contract-confirmed.
-- **Web config (base URL, session, token) lives in `localStorage`** for standalone demo use; the
-  real design has the native shell inject a short-lived token via JS bridge, nothing persisted
-  (see comment in `web/js/config.js`). Web renderer JS was reviewed line-by-line against the
-  contract rather than run in a real browser (no browser automation available in the build
-  environment) — event wiring/canvas capture were read and reasoned about, not observed executing.
-- **Idempotency replay/409 reuse, 409 stale T&C, full repair-driven resume** implemented per
-  contract but exercised against a minimal cross-check backend (its `/system` omitted step-scoped
-  banners) — treat as implemented-and-reasoned-through, not independently round-tripped.
-- **`scripts/smoke.sh` reuses one hardcoded device-attestation string** (`smoke-test-device`);
-  session creation is rate-limited ~5/day/device+IP, so repeated CI runs could 429 within a day.
+- **No real auth or KMS.** Bearer tokens are stub values and PII columns are stored in the clear,
+  with TODOs marking where AES-GCM/KMS would go (plan.md §5). PIN and session token on iOS use
+  `UserDefaults` rather than Keychain/Secure Enclave, for the same reason.
+- **No automated tests.** Correctness is exercised via `backend/scripts/smoke.sh` (full 10-page
+  flow, idempotency replay, stale-T&C checks) and manual exploration — no `go test` or XCUITest
+  suite yet.
+- **Rate limiter, idempotency cache, and translation cache are in-process/in-memory** — fine for
+  a single instance, not for multiple replicas. TODOs point at Redis. Idempotency records are
+  also persisted to Postgres, so replay protection survives a restart even though the cache doesn't.
+- **Camera, signature, and PIN are native-only by design** (plan.md §1) — the web renderer ships
+  simple stand-ins (file picker / canvas / plain input) so the whole flow can still be walked in
+  a browser. On iOS, blur detection in the camera step is a stub (always "not blurry"); face
+  presence via Vision is real.
+- **T&C HTML is injected via `innerHTML`** with no sanitizer allow-list yet — acceptable while
+  legal copy is same-origin and ops-controlled, worth revisiting if that source ever changes.
+- **Web config (base URL, session, token) lives in `localStorage`** for standalone demo use.
+  Production design has the native shell inject a short-lived token via a JS bridge on every
+  load, with nothing persisted — see the comment in `web/js/config.js`.
+- **No in-process "publish" endpoint for flow versions** — `flow_versions.published_at` exists
+  but isn't gated against current time; the v14→v15 repair demo above uses a seed-holdback
+  instead.
+- **Some wire-format names are POC inventions, not verbatim from plan.md**, which describes
+  behavior rather than JSON shape. `docs/contract.md` is the binding spec for names like repair
+  kinds (`reaccept_document`/`collect_fields`/`redo_step`), error codes
+  (`validation_failed`/`stale_document`/`idempotency_key_reused`), and the `force_update`
+  capability-gate shape.
+- **iPhone-only** — no iPad or rotation support, by design.

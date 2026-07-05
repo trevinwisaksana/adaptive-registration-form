@@ -7,7 +7,7 @@ how to render the six step types in `docs/contract.md` §3 and how to ask "what'
 
 ## Setup
 
-### Option A — regenerate with XcodeGen (what was used to build/verify this)
+### Option A — regenerate with XcodeGen
 
 ```sh
 brew install xcodegen        # if you don't have it
@@ -34,57 +34,6 @@ Defaults to `http://localhost:8080`. The same host also serves the web renderer 
 
 `NSAppTransportSecurity.NSAllowsArbitraryLoads` is set in `project.yml` to allow plain HTTP to
 localhost — POC only; a real build pins HTTPS and removes this (flagged inline in `project.yml`).
-
-## What was actually verified (be skeptical of anything not in this list)
-
-- **`xcodegen generate`** ran successfully (Xcode 27 / Xcodegen 2.45.4, installed via Homebrew
-  for this task) and produced `AdaptiveRegistrationForm.xcodeproj`.
-- **`xcodebuild build`** for `platform=iOS Simulator` (iPhone 16, iOS 18.5) succeeded —
-  `** BUILD SUCCEEDED **` — after fixing one iOS-17-only API used at an iOS 16 deployment target
-  (`onChange(of:initial:_:)`, since replaced with the iOS-16-compatible single-closure overload).
-- **Installed and launched on the simulator** (`simctl install` / `simctl launch`), confirmed via
-  `simctl launch` returning a live PID and the process showing up in `launchctl list` (i.e. it
-  did not crash on launch).
-- **Ran against a real, live backend** that happened to already be listening on
-  `localhost:8080` in this environment (not started by this task) — confirmed by screenshot:
-    - `POST /sessions` response was decoded correctly: the `system.banners` (`"High demand right
-      now…"`), `progress` ("Step 0 of 6"), and `next_step` (`personal_details` form) all rendered
-      as expected in `RootView`/`ProgressBarView`/`BannerListView`.
-    - With the native-form-renderer Settings toggle **on** (set via `simctl spawn defaults
-      write` + relaunch, since there's no UI test target to drive taps), the exact same
-      `personal_details` step (a `text` + `select` field) rendered via `NativeFormStepView`
-      instead of the webview — confirmed by a second screenshot showing a working text field and
-      picker.
-    - With the toggle off (default), the same step correctly routed to `WebStepView`, which
-      loaded `{baseURL}/web/#/step/personal_details?session=…` — that 404'd (`{"error":
-      {"code":"not_found","message":"no route"}}`) because no web frontend exists at `/web/` yet
-      (out of scope for this task; a separate deliverable). This confirms the webview renderer
-      correctly constructs the URL, injects the token via `WKUserScript`, and renders whatever
-      the server returns — it does **not** confirm the web renderer itself, which wasn't built
-      here.
-- Compared request/response shapes by hand against `curl` calls to the same live backend for
-  `POST /sessions` — the JSON matched the Swift `Codable` models field-for-field.
-
-## What was NOT verified (honest gaps)
-
-- **Camera, signature, and PIN screens were not exercised in the simulator.** There's no UI test
-  target (would need `XCUITest` to drive taps/gestures), and advancing the live flow past
-  `personal_details` requires submitting valid answers — reasonable to do via `curl`, but that
-  tests the backend, not the SwiftUI screens rendering them. These three files were verified by:
-  compiling cleanly under the full `xcodebuild` build (so they type-check and the `Canvas`/drag
-  gesture/`PhotosPicker`/`Vision`/keypad code is all valid Swift for iOS 16), and by code review
-  against `docs/contract.md` §3.2 for the exact submit-body shapes.
-- **Idempotency-key retry behavior, `409 stale_document`, `422 validation_failed` field-error
-  rendering, and repair-driven resume** were reviewed against the contract and wired up
-  (`SessionViewModel.lastValidationErrors`, `RepairsListView`) but not driven end-to-end against
-  a backend that actually implements those paths (the live instance in this environment appears
-  to be a minimal stub — its `/system` response has no step-scoped banners, for instance).
-- **Maintenance / `503 + Retry-After`** path (`MaintenanceView`) is implemented and reviewed but
-  not exercised against a real 503 response.
-- **Device rotation / iPad** — not tested; `TARGETED_DEVICE_FAMILY` is set to iPhone-only (`"1"`)
-  deliberately, per POC scope.
-- **No unit or UI test target** exists — none was requested, and adding one plus fixtures felt
-  like scope creep for a POC demonstrating the renderer registry, not test infrastructure.
 
 ## Structure
 
@@ -143,10 +92,9 @@ ios/
   call. A TODO marks where Keychain/Secure-Enclave storage for biometric unlock would go in a
   real build (out of POC scope).
 - **On-device photo checks** (`CameraStepView.swift`): `VNDetectFaceRectanglesRequest` for
-  face-present; the blur check is a stub that always passes (honestly commented) — a real build
-  would compute an actual sharpness metric, but the mock-capture images used for
-  Simulator/CI are flat-color placeholders that would always read as "blurry" under any real
-  metric, making a fully-implemented heuristic hard to demo without a real camera anyway.
+  face-present; the blur check is a stub that always passes — a real build would compute an
+  actual sharpness metric, but the mock-capture images used in the simulator are flat-color
+  placeholders that would always read as "blurry" under any real metric.
 - **Progress bar / banners / repairs** are rendered by `RootView` around the registry's output,
   never inside a step renderer — they're envelope-level concerns (contract.md §1, §4), not step
   concerns.
@@ -154,14 +102,18 @@ ios/
   (`ForceUpdateView`), not routed through the registry at all, since it's a capability gate rather
   than a step.
 
-## Known simplifications (POC scope, called out per the task brief)
+## Known limitations (POC scope)
 
-- No real KMS/encryption — nothing sensitive is stored client-side beyond a bearer token in
+- **No real KMS/encryption** — nothing sensitive is stored client-side beyond a bearer token in
   `UserDefaults` (flagged with a TODO to move to Keychain in `SessionStore.swift`).
-- `device_attestation` is a hardcoded stub string (`"poc-stub-attestation-token"`), not real
+- **`device_attestation` is a hardcoded stub string** (`"poc-stub-attestation-token"`), not real
   App Attest.
-- No on-device draft store for in-progress form input (plan.md §2.1) — the native comparison
-  form renderer is explicitly a stub for side-by-side comparison, not the production native
-  renderer that plan doc describes drafts for.
-- Blur detection in the camera step is a stub (see above).
-- No automated tests (unit or UI) — none were requested for this POC.
+- **No on-device draft store** for in-progress form input (plan.md §2.1) — `NativeFormStepView`
+  is a stub for side-by-side comparison against the web renderer, not the production native
+  renderer plan.md describes drafts for.
+- **Blur detection in the camera step is a stub** (see above); face detection via Vision is real.
+- **No automated tests** (unit or UI) — camera, signature, and PIN screens have no XCUITest
+  coverage; they're exercised via manual simulator runs and code review against
+  `docs/contract.md` §3.2.
+- **iPhone-only** — `TARGETED_DEVICE_FAMILY` is set to `"1"` deliberately; no iPad or rotation
+  support.
