@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Go
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# iOS / Xcode
+ios/build/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Env
+.env

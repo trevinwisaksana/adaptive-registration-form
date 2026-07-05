@@ -1,0 +1,36 @@
+[
+  {
+    "id": "high-load-0705",
+    "severity": "warning",
+    "scope": "global",
+    "status_override": "ok",
+    "active": true,
+    "text_by_locale": {
+      "en-US": "We're seeing high demand — verification may take longer than usual.",
+      "id-ID": "Kami melihat permintaan tinggi — verifikasi mungkin memakan waktu lebih lama dari biasanya."
+    }
+  },
+  {
+    "id": "bank-x-outage",
+    "severity": "info",
+    "scope": "bank_info",
+    "status_override": "ok",
+    "active": true,
+    "text_by_locale": {
+      "en-US": "Bank X connections are currently unstable. You can finish this later.",
+      "id-ID": "Koneksi Bank X saat ini tidak stabil. Anda dapat menyelesaikannya nanti."
+    }
+  },
+  {
+    "id": "maint-2026-07-06",
+    "severity": "warning",
+    "scope": "global",
+    "status_override": "maintenance",
+    "retry_after": 3600,
+    "active": false,
+    "text_by_locale": {
+      "en-US": "Scheduled maintenance 02:00–03:00 UTC.",
+      "id-ID": "Pemeliharaan terjadwal 02:00–03:00 UTC."
+    }
+  }
+]

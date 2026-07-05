@@ -1,0 +1,98 @@
+{
+  "datasets": [
+    {
+      "key": "regions",
+      "version": 1,
+      "items": [
+        { "code": "JK", "sort": 1, "labels": { "en-US": "DKI Jakarta", "id-ID": "DKI Jakarta" } },
+        { "code": "JB", "sort": 2, "labels": { "en-US": "West Java", "id-ID": "Jawa Barat" } },
+        { "code": "JI", "sort": 3, "labels": { "en-US": "East Java", "id-ID": "Jawa Timur" } },
+        { "code": "JT", "sort": 4, "labels": { "en-US": "Central Java", "id-ID": "Jawa Tengah" } },
+        { "code": "BT", "sort": 5, "labels": { "en-US": "Banten", "id-ID": "Banten" } }
+      ]
+    },
+    {
+      "key": "cities",
+      "version": 1,
+      "items": [
+        { "code": "JK-PST", "parent_code": "JK", "sort": 1, "labels": { "en-US": "Central Jakarta", "id-ID": "Jakarta Pusat" } },
+        { "code": "JK-SEL", "parent_code": "JK", "sort": 2, "labels": { "en-US": "South Jakarta", "id-ID": "Jakarta Selatan" } },
+        { "code": "JK-UTR", "parent_code": "JK", "sort": 3, "labels": { "en-US": "North Jakarta", "id-ID": "Jakarta Utara" } },
+
+        { "code": "JB-BKS", "parent_code": "JB", "sort": 1, "labels": { "en-US": "Bekasi", "id-ID": "Bekasi" } },
+        { "code": "JB-BGR", "parent_code": "JB", "sort": 2, "labels": { "en-US": "Bogor", "id-ID": "Bogor" } },
+        { "code": "JB-BDG", "parent_code": "JB", "sort": 3, "labels": { "en-US": "Bandung", "id-ID": "Bandung" } },
+        { "code": "JB-DPK", "parent_code": "JB", "sort": 4, "labels": { "en-US": "Depok", "id-ID": "Depok" } },
+
+        { "code": "JI-SBY", "parent_code": "JI", "sort": 1, "labels": { "en-US": "Surabaya", "id-ID": "Surabaya" } },
+        { "code": "JI-MLG", "parent_code": "JI", "sort": 2, "labels": { "en-US": "Malang", "id-ID": "Malang" } },
+        { "code": "JI-SDA", "parent_code": "JI", "sort": 3, "labels": { "en-US": "Sidoarjo", "id-ID": "Sidoarjo" } },
+
+        { "code": "JT-SMG", "parent_code": "JT", "sort": 1, "labels": { "en-US": "Semarang", "id-ID": "Semarang" } },
+        { "code": "JT-SLO", "parent_code": "JT", "sort": 2, "labels": { "en-US": "Solo", "id-ID": "Solo" } },
+        { "code": "JT-MGL", "parent_code": "JT", "sort": 3, "labels": { "en-US": "Magelang", "id-ID": "Magelang" } },
+
+        { "code": "BT-TNG", "parent_code": "BT", "sort": 1, "labels": { "en-US": "Tangerang", "id-ID": "Tangerang" } },
+        { "code": "BT-SRG", "parent_code": "BT", "sort": 2, "labels": { "en-US": "Serang", "id-ID": "Serang" } }
+      ]
+    },
+    {
+      "key": "occupations",
+      "version": 1,
+      "items": [
+        { "code": "SOFTWARE_ENGINEER", "sort": 1, "labels": { "en-US": "Software Engineer", "id-ID": "Insinyur Perangkat Lunak" } },
+        { "code": "TEACHER", "sort": 2, "labels": { "en-US": "Teacher", "id-ID": "Guru" } },
+        { "code": "DOCTOR", "sort": 3, "labels": { "en-US": "Doctor", "id-ID": "Dokter" } },
+        { "code": "LAWYER", "sort": 4, "labels": { "en-US": "Lawyer", "id-ID": "Pengacara" } },
+        { "code": "ACCOUNTANT", "sort": 5, "labels": { "en-US": "Accountant", "id-ID": "Akuntan" } },
+        { "code": "ENTREPRENEUR", "sort": 6, "labels": { "en-US": "Entrepreneur", "id-ID": "Wirausahawan" } },
+        { "code": "SALES_EXECUTIVE", "sort": 7, "labels": { "en-US": "Sales Executive", "id-ID": "Eksekutif Penjualan" } },
+        { "code": "CIVIL_SERVANT", "sort": 8, "labels": { "en-US": "Civil Servant", "id-ID": "Pegawai Negeri" } },
+        { "code": "STUDENT", "sort": 9, "labels": { "en-US": "Student", "id-ID": "Pelajar" } },
+        { "code": "RETIRED", "sort": 10, "labels": { "en-US": "Retired", "id-ID": "Pensiunan" } }
+      ]
+    },
+    {
+      "key": "employment_statuses",
+      "version": 1,
+      "items": [
+        { "code": "employed", "sort": 1, "labels": { "en-US": "Employed", "id-ID": "Bekerja" } },
+        { "code": "self_employed", "sort": 2, "labels": { "en-US": "Self-employed", "id-ID": "Wiraswasta" } },
+        { "code": "unemployed", "sort": 3, "labels": { "en-US": "Unemployed", "id-ID": "Tidak bekerja" } },
+        { "code": "student", "sort": 4, "labels": { "en-US": "Student", "id-ID": "Pelajar" } },
+        { "code": "retired", "sort": 5, "labels": { "en-US": "Retired", "id-ID": "Pensiunan" } }
+      ]
+    },
+    {
+      "key": "fund_sources",
+      "version": 1,
+      "items": [
+        { "code": "salary", "sort": 1, "labels": { "en-US": "Salary", "id-ID": "Gaji" } },
+        { "code": "business_income", "sort": 2, "labels": { "en-US": "Business income", "id-ID": "Penghasilan usaha" } },
+        { "code": "investments", "sort": 3, "labels": { "en-US": "Investments", "id-ID": "Investasi" } },
+        { "code": "inheritance", "sort": 4, "labels": { "en-US": "Inheritance", "id-ID": "Warisan" } },
+        { "code": "savings", "sort": 5, "labels": { "en-US": "Savings", "id-ID": "Tabungan" } }
+      ]
+    },
+    {
+      "key": "experience_levels",
+      "version": 1,
+      "items": [
+        { "code": "novice", "sort": 1, "labels": { "en-US": "Novice", "id-ID": "Pemula" } },
+        { "code": "intermediate", "sort": 2, "labels": { "en-US": "Intermediate", "id-ID": "Menengah" } },
+        { "code": "experienced", "sort": 3, "labels": { "en-US": "Experienced", "id-ID": "Berpengalaman" } }
+      ]
+    },
+    {
+      "key": "instrument_types",
+      "version": 1,
+      "items": [
+        { "code": "stocks", "sort": 1, "labels": { "en-US": "Stocks", "id-ID": "Saham" } },
+        { "code": "options", "sort": 2, "labels": { "en-US": "Options", "id-ID": "Opsi" } },
+        { "code": "forex", "sort": 3, "labels": { "en-US": "Forex", "id-ID": "Forex" } },
+        { "code": "crypto", "sort": 4, "labels": { "en-US": "Crypto", "id-ID": "Kripto" } },
+        { "code": "futures", "sort": 5, "labels": { "en-US": "Futures", "id-ID": "Futures" } }
+      ]
+    }
+  ]
+}

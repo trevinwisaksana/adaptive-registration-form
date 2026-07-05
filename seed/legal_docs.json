@@ -1,0 +1,30 @@
+[
+  {
+    "kind": "tnc", "version": "2026-07", "locale": "en-US",
+    "content_type": "text/html",
+    "content": "<html><body><h1>Terms &amp; Conditions (2026-07)</h1><p>This is placeholder legal text for the adaptive registration form proof of concept. By accepting, you agree to the lorem-ipsum terms governing your trading account: fees are illustrative, risk disclosures are illustrative, and no real obligations are created by this document.</p><p>Version 2026-07, first published edition.</p></body></html>",
+    "effective_at": "2026-06-01T00:00:00Z",
+    "reacceptance": "editorial"
+  },
+  {
+    "kind": "tnc", "version": "2026-07", "locale": "id-ID",
+    "content_type": "text/html",
+    "content": "<html><body><h1>Syarat &amp; Ketentuan (2026-07)</h1><p>Ini adalah teks hukum placeholder untuk proof-of-concept formulir pendaftaran adaptif. Dengan menyetujui, Anda menyetujui ketentuan lorem-ipsum yang mengatur akun trading Anda: biaya bersifat ilustratif, pengungkapan risiko bersifat ilustratif, dan tidak ada kewajiban nyata yang timbul dari dokumen ini.</p><p>Versi 2026-07, edisi pertama.</p></body></html>",
+    "effective_at": "2026-06-01T00:00:00Z",
+    "reacceptance": "editorial"
+  },
+  {
+    "kind": "tnc", "version": "2026-08", "locale": "en-US",
+    "content_type": "text/html",
+    "content": "<html><body><h1>Terms &amp; Conditions (2026-08)</h1><p>This is placeholder legal text for the adaptive registration form proof of concept, revised. This version adds a material clause on suitability review and updated risk disclosures for leveraged instruments (lorem-ipsum, illustrative only).</p><p>Version 2026-08 supersedes 2026-07 and requires re-acceptance from in-flight users.</p></body></html>",
+    "effective_at": "2026-07-01T00:00:00Z",
+    "reacceptance": "required"
+  },
+  {
+    "kind": "tnc", "version": "2026-08", "locale": "id-ID",
+    "content_type": "text/html",
+    "content": "<html><body><h1>Syarat &amp; Ketentuan (2026-08)</h1><p>Ini adalah teks hukum placeholder untuk proof-of-concept formulir pendaftaran adaptif, versi revisi. Versi ini menambahkan klausul material tentang tinjauan kesesuaian dan pengungkapan risiko yang diperbarui untuk instrumen leverage (lorem-ipsum, hanya ilustratif).</p><p>Versi 2026-08 menggantikan 2026-07 dan mengharuskan pengguna yang sedang berjalan untuk menyetujui ulang.</p></body></html>",
+    "effective_at": "2026-07-01T00:00:00Z",
+    "reacceptance": "required"
+  }
+]

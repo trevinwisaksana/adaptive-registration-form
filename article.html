@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Building a Future-proof Registration Form</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
+  h1 { font-size: 2.2em; line-height: 1.2; }
+  h2 { font-size: 1.5em; margin-top: 1.8em; }
+  pre { background: #f4f4f4; padding: 14px; overflow-x: auto; font-size: 14px; line-height: 1.45; }
+  code { font-family: Menlo, monospace; background: #f4f4f4; padding: 1px 4px; font-size: 0.9em; }
+  pre code { padding: 0; background: none; }
+  blockquote { border-left: 3px solid #1a1a1a; margin-left: 0; padding-left: 18px; font-style: italic; }
+  img { max-width: 100%; }
+  hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; }
+</style>
+</head>
+<body>
+
+<h1>Building a Future-proof Registration Form</h1>
+
+<p><em>Registration forms are one of the most overlooked parts of a product. Nobody talks about how to engineer one properly yet it is the entry point of many apps and websites. This is how I would build one.</em></p>
+
+<hr>
+
+<h2>TL;DR</h2>
+
+<ul>
+<li>Registration flows in regulated products change all the time, and the changes come from outside engineering: regulators add fields, legal updates the terms and conditions, product reorders pages to reduce drop-off.</li>
+<li>If the flow is hard-coded in the iOS app, the Android app, and the API, every one of those changes costs a backend deploy plus two app-store releases.</li>
+<li>The fix is to make the app a thin renderer of a few fixed step types (form, camera, signature, document viewer, PIN pad) and let the backend own the entire flow as versioned JSON: the page order, the fields, and the validation.</li>
+<li>After that, adding a field or reordering pages is a data edit, not a release. Go native only where the platform demands it (camera, PIN); build the form pages as web views so they&rsquo;re written once for both platforms.</li>
+</ul>
+
+<h2>The most overlooked part of the product</h2>
+
+<p>If you&rsquo;ve built onboarding for a regulated product like a trading or banking app, you know the flow: personal details, bank information, an ID photo, a selfie, terms and conditions, a PIN. Ten pages before the user can do anything.</p>
+
+<p>Nobody writes about this part of the product. It&rsquo;s &ldquo;just forms,&rdquo; so it gets underestimated by roadmaps, estimates, and the engineers assigned to it. In a regulated company it&rsquo;s a complex system: versioned legal documents, per-call vendor costs, fraud attempts, compliance deadlines, and users dropping off on every page.</p>
+
+<h2>The naive approach</h2>
+
+<p>The average engineer&rsquo;s first approach is to build it natively and mirror it on the backend: one hard-coded screen per page in iOS and Android, and one endpoint per page in the API. <code>POST /register/personal-details</code>, <code>POST /register/bank-info</code>, each with its own handler, its own validation, its own database columns. This creates three problems:</p>
+
+<ul>
+<li><strong>Every field is built three times.</strong> Once in Swift, once in Kotlin, and once in the backend. Changing a single field means changing all three, going through two app-store reviews, and waiting for users to update their apps. And because there are three copies, they go out of sync: Android accepts a value that the API rejects.</li>
+<li><strong>Reordering pages is a two-week project.</strong> It sounds like dragging items in a list, but the page order is hard-coded in three places: the iOS navigation, the Android navigation, and the API, where each endpoint assumes certain pages were already submitted before it. Moving one page means updating and re-testing all three, then shipping two app releases.</li>
+<li><strong>Logic that spans pages breaks easily.</strong> For example, page 3 should only show an SSN field if the user picked &ldquo;United States&rdquo; on page 2. That rule has to be written in the iOS app, again in the Android app, and again on the server for validation. Three hand-written copies of the same rule will eventually disagree, and you get bugs like a field that appears on Android but not on iOS.</li>
+</ul>
+
+<p>The natural next step is to make it schema-based: describe the fields in a schema (a JSON file that lists each field, its type, and its validation rules) instead of hard-coding the screens.</p>
+
+<p>It helps, but most teams make a mistake: the schema ships inside the apps, and the backend keeps its endpoint-per-page API. The page order and the cross-page logic still live in native code, so a schema change still needs an app release, and a reorder still needs a backend deploy plus two app releases. The screens became declarative, but the flow didn&rsquo;t.</p>
+
+<p>Meanwhile, the form keeps changing, and almost never for engineering reasons:</p>
+
+<ul>
+<li><strong>Regulators add fields.</strong> A tax residency question, a FATCA declaration, a source-of-funds breakdown, all with deadlines you don&rsquo;t control.</li>
+<li><strong>Legal updates the terms and conditions.</strong> Every new sign-up must see and accept the current version.</li>
+<li><strong>Product reorders pages</strong> to reduce drop-off, or inserts a step for a third-party KYC vendor (the company that verifies IDs and selfies).</li>
+<li><strong>Things break mid-flow.</strong> The KYC vendor gets backed up, or a partner bank&rsquo;s API goes down. Ops needs to show users a message like &ldquo;verification is taking longer than usual&rdquo; right now. If that requires an engineer and an app release, the message arrives after the outage is over.</li>
+</ul>
+
+<p>This is the core problem: the form changes often, the changes come from outside engineering, and with the naive architecture every change costs a backend deploy and two app releases.</p>
+
+<p>A well designed registration form is the one that absorbs regulatory changes, drop-off, vendor costs, and consent requirements without a fire drill. Here&rsquo;s the design I&rsquo;d build.</p>
+
+<h2>The core idea: the app never knows the flow</h2>
+
+<p>The fix is to take the schema out of the app entirely. The design rests on one inversion: <strong>the app never knows the flow.</strong></p>
+
+<p>The mobile app is a thin renderer. It knows how to render a small, fixed set of <em>step types</em>: a form, a camera screen, a signature pad, a document viewer, a PIN pad. Nothing else. It doesn&rsquo;t know how many pages exist, what order they come in, or what fields are on them.</p>
+
+<p>The backend owns everything else: the flow definition, the page order, the validation, and the state machine that tracks where each user is. The entire contract between app and server is one loop:</p>
+
+<blockquote><p>&ldquo;Here is the user&rsquo;s answer to step X.&rdquo; &rarr; &ldquo;Here is step Y. Render it.&rdquo;</p></blockquote>
+
+<p>The app never decides what comes next. It asks the server &ldquo;what&rsquo;s next?&rdquo;, and the server reads a <strong>versioned JSON flow definition</strong> from the database and returns the next step, fully resolved and ready to draw.</p>
+
+<p><img src="system-design.gif" alt="System design: the app opens a session and asks what's next; the backend reads the versioned flow definition, validates each submitted step, and returns the next step to render"></p>
+
+<p>The API can be much simpler as well. Instead of one endpoint per page, there are three generic API calls: open a session, submit a step, fetch the current state. Reordering pages can&rsquo;t break the API, because the API never mentions specific pages. Validation is written once, in the flow definition, and enforced by the server; the apps just render the rules they&rsquo;re given.</p>
+
+<p>Here&rsquo;s a flow definition (middle pages left out to keep it short):</p>
+
+<pre><code>{
+  "flow": "retail_onboarding",
+  "version": 14,
+  "steps": [
+    { "id": "personal_details", "type": "form",
+      "fields": [
+        { "key": "full_name", "kind": "text", "required": true },
+        { "key": "dob", "kind": "date", "rules": ["age>=18"] },
+        { "key": "tax_id", "kind": "text", "since_version": 14 }  // ← the new regulatory field
+      ]},
+    // … contact, employment, trading experience, bank pages …
+    { "id": "id_card", "type": "camera", "capture": "id_card" },
+    { "id": "selfie",  "type": "camera", "capture": "selfie" },
+    { "id": "tnc",     "type": "document", "doc": "tnc" },
+    { "id": "sign",    "type": "signature" },
+    { "id": "setup_pin", "type": "pin" }
+  ],
+  "on_complete": [
+    { "adapter": "vendor_kyc" }  // verification is not a page
+  ]
+}</code></pre>
+
+<p>Changes that used to be app releases become data edits:</p>
+
+<ul>
+<li><strong>Add a regulatory field</strong> &rarr; publish a new flow version.</li>
+<li><strong>Reorder pages</strong> &rarr; edit the <code>steps</code> array.</li>
+<li><strong>Insert a vendor step</strong> &rarr; add a step pointing at an adapter.</li>
+</ul>
+
+<p>An app release is only needed for a brand-new native step type, which is built once and reused forever e.g. liveness SDK integration. Everything else is data: fields, pages, ordering, copy.</p>
+
+<h2>Should the screens be native, web, or both?</h2>
+
+<p>Server-driven UI raises an obvious question: why not skip native screens entirely and put the whole flow in a web page inside the app?</p>
+
+<p>The deciding factor is that the form has to work on <strong>both iOS and Android</strong>. Every native screen has to be built twice and shipped through two app-store reviews. A web page is built once and reaches both platforms instantly, and you can change it without any app release. Web has real downsides - it needs extra security work and feels slightly less polished than native - but building once instead of twice is worth it.</p>
+
+<p>If you only support one platform, fully native is a perfectly good choice. You&rsquo;d build each screen only once anyway, and you&rsquo;d avoid the web security work. The web approach only pays off when you have two platforms to support.</p>
+
+<p>To support two platforms the best decision is to go hybrid and decide per step:</p>
+
+<ul>
+<li><strong>Camera (selfie / ID): native.</strong> Camera control, on-device photo quality checks, and the KYC vendor&rsquo;s liveness SDKs only work natively.</li>
+<li><strong>Signature and PIN: native.</strong> If there&rsquo;s a step to create a PIN or e-signature go native to completely eliminate the possibility of a vulnerability that comes with a web implementation.</li>
+<li><strong>Form pages, T&amp;C, banners: web view inside the app.</strong> These pages get built once for both platforms, and new field types and visual changes ship from the server with no app release.</li>
+</ul>
+
+<p>The web pages need real security work, and it&rsquo;s ongoing, not a one-time setup:</p>
+
+<ul>
+<li><strong>A strict Content Security Policy (CSP).</strong> This is a browser rule that says &ldquo;this page may only load code from our own servers.&rdquo; It blocks injected or third-party scripts from running on registration pages, which handle sensitive data.</li>
+<li><strong>XSS review on frontend changes.</strong> XSS (cross-site scripting) is an attack where someone gets their own JavaScript to run on your page, letting them steal whatever the user types. Any change to the web form code gets reviewed for it.</li>
+<li><strong>A safe login handoff from native to web.</strong> The web page needs to prove which user session it belongs to. The native app passes it a short-lived token that only works for this one registration session, and the token is never saved in the browser&rsquo;s storage, where other scripts could read it.</li>
+</ul>
+
+<h2>The overall benefit</h2>
+
+<p>The architecture is small: one session API, versioned flow JSON, a state machine, per-step submissions, five native renderers plus web form pages. What it changes is the day-to-day work:</p>
+
+<ul>
+<li><strong>A regulatory field</strong> is a flow version publish. Users mid-flow get asked for just the new field; nobody&rsquo;s progress is thrown away.</li>
+<li><strong>A T&amp;C update</strong> is a legal-docs publish. New sign-ups see it immediately.</li>
+<li><strong>&ldquo;Bank X is having issues&rdquo;</strong> is one row in the announcements table, shown only on the bank-info page.</li>
+<li><strong>You can measure whether a form change helped or hurt.</strong> Because each session is pinned to the flow version it started on, users on v14 and users on v15 exist side by side. Compare their completion rates and you know within a day whether the new version made drop-off better or worse - instead of finding out weeks later through support tickets.</li>
+</ul>
+
+<p>Every decision in this article is the same move: <strong>put the knowledge on the server, resolve it when the page is served, keep the app dumb.</strong> Ordering, validation, conditional fields, T&amp;C versions, progress bars, banners - all of it. Once you commit to that, &ldquo;the form changed again&rdquo; stops being a fire drill and becomes a Tuesday.</p>
+
+<h2>The checklist: what a good registration form needs</h2>
+
+<p>Few people talk about registration forms, so most teams don&rsquo;t know what to demand from one until each gap becomes an incident. Grade any design against this list, including the one you have in production.</p>
+
+<p><strong>The flow is data</strong></p>
+
+<ul>
+<li>The server owns ordering, validation, and the state machine. The app only renders a fixed set of step types.</li>
+<li>Flow definitions are versioned. Sessions are pinned to the version they started on, so a publish never breaks a user mid-flow.</li>
+<li>Adding a field, reordering pages, or inserting a step is a data change. No release, no deploy.</li>
+<li>The app declares its capabilities when it opens a session; the server never serves a step the app can&rsquo;t render. Old app versions get an update prompt, not a crash.</li>
+</ul>
+
+<p><strong>Conditional logic lives in one place</strong></p>
+
+<ul>
+<li>Field visibility and required-ness are rules in the flow definition, not hand-written screen code.</li>
+<li>Dependencies across pages are resolved by the server when it serves the page; the app never needs another page&rsquo;s answers.</li>
+<li>Editing an earlier answer cascades: still-valid answers are kept, no-longer-relevant ones are dropped, newly required ones are asked for.</li>
+<li>Server-side validation is the only validation that counts. Client-side rules are for user experience and are always re-checked.</li>
+</ul>
+
+<p><strong>Drop-off is a first-class scenario</strong></p>
+
+<ul>
+<li>Every page submit is saved server-side; progress never lives only on the device.</li>
+<li>Resuming never re-asks what&rsquo;s still valid. It asks only for what&rsquo;s missing.</li>
+<li>Submits carry idempotency keys (a unique ID per submit attempt), so a double-tap can&rsquo;t trigger a vendor call twice or create a duplicate record.</li>
+</ul>
+
+<p><strong>Money and abuse are designed for</strong></p>
+
+<ul>
+<li>Expensive verification e.g. anti-fraud scanning runs once per session, at the end, and can&rsquo;t be triggered twice. Never triggered by an upload.</li>
+<li>Cheap checks run early: on-device photo checks at capture, basic file validation at upload.</li>
+<li>Upload abuse is contained structurally: one storage slot per document type, presigned upload URLs, per-session quotas, rate-limited session creation.</li>
+</ul>
+
+<p><strong>Consent and compliance leave evidence</strong></p>
+
+<ul>
+<li>Legal documents have their own versioned publishing process, separate from flows and app releases.</li>
+<li>Consent records store the exact version, language, and content hash the user saw: evidence, not a boolean.</li>
+<li>Sensitive fields are encrypted at the application layer; credentials like a PIN never enter form storage.</li>
+</ul>
+
+<p><strong>Ops can act without engineering</strong></p>
+
+<ul>
+<li>Banners and maintenance mode are server-side data, scoped globally or to a single page.</li>
+<li>Every state transition emits a structured event, so per-page conversion, validation-failure rates, and resume rates come free.</li>
+<li>Completion rate is tracked per flow version, so every publish doubles as an experiment and a broken change shows up in the numbers within a day.</li>
+</ul>
+
+<p>This is how it should be done. It&rsquo;ll make your life easier than handling on-call on a daily basis due to bugs or breaking changes. The registration form is the first thing every user touches and the last thing most teams design deliberately. It deserves better than &ldquo;just forms.&rdquo;</p>
+
+</body>
+</html>

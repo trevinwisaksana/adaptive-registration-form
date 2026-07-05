@@ -1,0 +1,43 @@
+name: AdaptiveRegistrationForm
+options:
+  bundleIdPrefix: com.example.adaptiveregistration
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+targets:
+  AdaptiveRegistrationForm:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: App/Sources
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: "Registration POC"
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: "Used to photograph your ID card and take a selfie during onboarding."
+        NSPhotoLibraryUsageDescription: "Used as a fallback to choose an ID/selfie photo when a camera isn't available (e.g. Simulator)."
+        # POC only: the backend runs over plain HTTP on localhost (no TLS, no real KMS — see
+        # plan.md §7 "Out"). A real build pins to HTTPS and removes this entirely.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.adaptiveregistration.app
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+    scheme:
+      testTargets: []
+      gatherCoverageData: false

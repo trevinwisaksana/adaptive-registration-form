@@ -1,0 +1,69 @@
+{
+  "flow": "retail_onboarding",
+  "version": 15,
+  "steps": [
+    { "id": "personal_details", "type": "form", "title_key": "steps.personal_details.title",
+      "fields": [
+        { "key": "full_name", "kind": "text", "label_key": "fields.full_name", "required": true },
+        { "key": "dob", "kind": "date", "label_key": "fields.dob", "required": true, "rules": ["age>=18"] },
+        { "key": "tax_id", "kind": "text", "label_key": "fields.tax_id", "required": true, "since_version": 15 }
+      ]
+    },
+    { "id": "contact_address", "type": "form", "title_key": "steps.contact_address.title",
+      "fields": [
+        { "key": "address_line1", "kind": "text", "label_key": "fields.address_line1", "required": true },
+        { "key": "country", "kind": "text", "label_key": "fields.country", "required": true },
+        { "key": "region", "kind": "select", "label_key": "fields.region", "options_ref": "regions", "required": true },
+        { "key": "city", "kind": "select", "label_key": "fields.city", "options_ref": "cities", "filter_by": { "parent": "region" }, "required": true },
+        { "key": "postal_code", "kind": "text", "label_key": "fields.postal_code" }
+      ]
+    },
+    { "id": "employment_income", "type": "form", "title_key": "steps.employment_income.title",
+      "fields": [
+        { "key": "employment_status", "kind": "select", "label_key": "fields.employment_status", "options_ref": "employment_statuses", "required": true },
+        { "key": "employer_name", "kind": "text", "label_key": "fields.employer_name",
+          "visible_when": "employment_status in ['employed','self_employed']",
+          "required_when": "employment_status in ['employed','self_employed']" },
+        { "key": "occupation", "kind": "select", "label_key": "fields.occupation", "options_ref": "occupations",
+          "visible_when": "employment_status in ['employed','self_employed']" },
+        { "key": "annual_income", "kind": "money", "label_key": "fields.annual_income", "rules": ["min:0"] },
+        { "key": "source_of_funds", "kind": "multiselect", "label_key": "fields.source_of_funds", "options_ref": "fund_sources" },
+        { "key": "ssn", "kind": "text", "label_key": "fields.ssn", "visible_when": "answers.contact_address.country == 'US'" },
+        { "key": "npwp", "kind": "text", "label_key": "fields.npwp", "visible_when": "answers.contact_address.country == 'ID'" }
+      ]
+    },
+    { "id": "trading_experience", "type": "form", "title_key": "steps.trading_experience.title",
+      "fields": [
+        { "key": "experience_level", "kind": "select", "label_key": "fields.experience_level", "options_ref": "experience_levels", "required": true },
+        { "key": "instruments", "kind": "multiselect", "label_key": "fields.instruments", "options_ref": "instrument_types" },
+        { "key": "us_person", "kind": "bool", "label_key": "fields.us_person", "required": true },
+        { "key": "leverage_acknowledged", "kind": "bool", "label_key": "fields.leverage_acknowledged", "required": true }
+      ]
+    },
+    { "id": "fatca_form", "type": "form", "title_key": "steps.fatca_form.title",
+      "fields": [
+        { "key": "us_tin", "kind": "text", "label_key": "fields.us_tin", "required": true },
+        { "key": "citizenship_confirmed", "kind": "bool", "label_key": "fields.citizenship_confirmed", "required": true }
+      ]
+    },
+    { "id": "bank_info", "type": "form", "title_key": "steps.bank_info.title",
+      "fields": [
+        { "key": "bank_name", "kind": "text", "label_key": "fields.bank_name", "required": true },
+        { "key": "account_number", "kind": "text", "label_key": "fields.account_number", "required": true },
+        { "key": "account_holder", "kind": "text", "label_key": "fields.account_holder", "required": true }
+      ]
+    },
+    { "id": "id_card", "type": "camera", "title_key": "steps.id_card.title", "capture": "id_card" },
+    { "id": "selfie", "type": "camera", "title_key": "steps.selfie.title", "capture": "selfie" },
+    { "id": "tnc", "type": "document", "title_key": "steps.tnc.title", "doc": "tnc" },
+    { "id": "sign", "type": "signature", "title_key": "steps.sign.title" },
+    { "id": "setup_pin", "type": "pin", "title_key": "steps.setup_pin.title" }
+  ],
+  "transitions": [
+    { "from": "trading_experience", "when": "answers.trading_experience.us_person == true",
+      "insert": ["fatca_form"], "before": "bank_info" }
+  ],
+  "on_complete": [
+    { "adapter": "vendor_kyc" }
+  ]
+}

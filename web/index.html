@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- index.html — the server-driven form renderer (plan.md §1 hybrid decision:
+     "Form pages, T&C, banners — web, inside the app"). Plain static HTML +
+     vanilla JS + one CSS file, no build step, no third-party scripts (CSP
+     below enforces this). Meant to be served over http(s) and either opened
+     directly in a mobile-viewport browser or loaded inside a WKWebView. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<title>Registration</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <header id="app-header">
+    <div class="progress-row">
+      <div id="progress-track" class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+      <span id="progress-label" class="progress-label"></span>
+    </div>
+    <div id="locale-switcher" class="locale-switcher">
+      <button type="button" data-locale="en-US">EN</button>
+      <button type="button" data-locale="id-ID">ID</button>
+    </div>
+  </header>
+
+  <div id="offline-banner" class="banner banner-error" hidden>
+    <span>Offline — check your connection.</span>
+  </div>
+
+  <div id="banners-global" class="banners-global"></div>
+
+  <main id="step-container" class="step-container">
+    <p class="loading-message">Loading…</p>
+  </main>
+
+  <div id="banners-step" class="banners-step"></div>
+
+  <section id="maintenance-screen" class="maintenance-screen" hidden>
+    <div class="maintenance-box">
+      <h1 id="maintenance-title">Down for maintenance</h1>
+      <p id="maintenance-body"></p>
+      <p id="maintenance-retry" class="maintenance-retry"></p>
+    </div>
+  </section>
+
+  <details id="debug-panel" class="debug-panel">
+    <summary id="debug-title">Debug</summary>
+    <div class="debug-body">
+      <label id="debug-api-base-label" for="debug-api-base">API base URL</label>
+      <div class="debug-row">
+        <input id="debug-api-base" type="text" />
+        <button id="debug-api-base-save" type="button">Save &amp; reload</button>
+      </div>
+
+      <label id="debug-locale-label">Locale</label>
+      <div class="debug-row">
+        <span class="debug-hint">Use the EN / ID switcher above.</span>
+      </div>
+
+      <div class="debug-row debug-actions">
+        <button id="debug-drop-off" type="button" class="btn btn-secondary"></button>
+        <button id="debug-forget" type="button" class="btn btn-secondary"></button>
+      </div>
+
+      <label id="debug-envelope-label">Last server envelope</label>
+      <pre id="debug-envelope" class="debug-envelope">—</pre>
+    </div>
+  </details>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
