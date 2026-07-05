@@ -2,23 +2,24 @@
 
 Server-driven trading-app onboarding flow: the Go backend owns the flow definition, ordering,
 validation, and state machine; iOS and web are **thin renderers** that only know how to draw six
-step `type`s. Full design: [`plan.md`](plan.md). Exact wire format every builder implemented
-against: [`docs/contract.md`](docs/contract.md).
+step `type`s. The original design doc is [`plan.md`](plan.md), for readers who want more depth.
+The exact wire format both the iOS app and the web renderer are built against is
+[`docs/contract.md`](docs/contract.md), which is the binding API spec for this repo.
 
 ![System design overview](system-design.gif)
 
-## What this demonstrates (mapped to plan.md)
+## What this demonstrates
 
-| plan.md section | What to look at |
+| Concept | What to look at |
 |---|---|
-| §1 Server drives the form | `backend/internal/engine` decides `next_step`; `StepRegistry`/`app.js` just dispatch on `type` |
-| §1 Native vs WebView hybrid | iOS renders camera/signature/pin natively, loads form/document/external via `WKWebView` at `/web/` |
-| §2/§2.1 Flow def + branching | `seed/flows/flow_v14.json`, `flow_v15.json` — 10 pages, `transitions[]` FATCA branch on `us_person` |
-| §2.1 Refdata, localization | `backend/internal/store`, seeded from `seed/refdata.json` / `seed/translations.json` |
-| §3 Architecture & data model | `backend/migrations/0001_init.sql`, `backend/internal/{flowdef,engine,store,media}` |
-| §3.1 Banners & maintenance | `seed/announcements.json`, `system` envelope on every response, `GET /system` |
-| §4/§4.1 Reconciliation, T&C | reconciliation in `backend/internal/engine` on `GET /sessions/{id}`; `seed/legal_docs.json` |
-| §7 POC scope / milestones | `backend/scripts/smoke.sh` drives the whole 10-page flow with `curl` |
+| Server drives the form | `backend/internal/engine` decides `next_step`; `StepRegistry`/`app.js` just dispatch on `type` |
+| Native vs WebView hybrid | iOS renders camera/signature/pin natively, loads form/document/external via `WKWebView` at `/web/` |
+| Flow definition + branching | `seed/flows/flow_v14.json`, `flow_v15.json` — 10 pages, `transitions[]` FATCA branch on `us_person` |
+| Reference data, localization | `backend/internal/store`, seeded from `seed/refdata.json` / `seed/translations.json` |
+| Architecture & data model | `backend/migrations/0001_init.sql`, `backend/internal/{flowdef,engine,store,media}` |
+| Banners & maintenance mode | `seed/announcements.json`, `system` envelope on every response, `GET /system` |
+| Reconciliation, T&C re-acceptance | reconciliation in `backend/internal/engine` on `GET /sessions/{id}`; `seed/legal_docs.json` |
+| POC scope / smoke coverage | `backend/scripts/smoke.sh` drives the whole 10-page flow with `curl` |
 
 ## Architecture
 
@@ -104,7 +105,7 @@ BASE_URL=http://localhost:8080 ./scripts/smoke.sh   # requires jq + curl
 Waits for `GET /system`, submits every page, uploads a valid 1x1 PNG for the camera/signature
 slots, then waits ~12s for the mock KYC adapter's delayed webhook.
 
-## The money demo: flow v14 → v15 mid-flight repair (plan.md §7, milestone 4)
+## The money demo: flow v14 → v15 mid-flight repair
 
 Both flow versions are seeded at startup and new sessions always start on the **latest** one —
 so to observe "a user drops off, then v15 publishes while they're away", v15 must not exist yet
@@ -121,10 +122,11 @@ when the session starts:
    version — `next_step` points at the first unresolved item; nothing already submitted is re-asked.
 
 There's no in-process "publish" admin endpoint in this POC (`flow_versions.published_at` exists
-but isn't gated against current time) — the seed-holdback above demos it without one. See
-`docs/contract.md` §4 for the repair shapes.
+but isn't gated against current time) — the seed-holdback above demos it without one. The exact
+JSON shape of each repair entry (`collect_fields`, `reaccept_document`, `redo_step`) is defined in
+`docs/contract.md`.
 
-## Banners & maintenance-mode toggle (plan.md §3.1)
+## Banners & maintenance-mode toggle
 
 Banners and maintenance status are ops data in the `announcements` table, seeded from
 `seed/announcements.json` on boot (upsert by `id`). Seeded rows: a global "high demand" banner
@@ -144,7 +146,7 @@ it left off once maintenance clears.
 ## Known limitations (POC scope)
 
 - **No real auth or KMS.** Bearer tokens are stub values and PII columns are stored in the clear,
-  with TODOs marking where AES-GCM/KMS would go (plan.md §5). PIN and session token on iOS use
+  with TODOs marking where AES-GCM/KMS encryption-at-rest would go. PIN and session token on iOS use
   `UserDefaults` rather than Keychain/Secure Enclave, for the same reason.
 - **No automated tests.** Correctness is exercised via `backend/scripts/smoke.sh` (full 10-page
   flow, idempotency replay, stale-T&C checks) and manual exploration — no `go test` or XCUITest
@@ -152,10 +154,11 @@ it left off once maintenance clears.
 - **Rate limiter, idempotency cache, and translation cache are in-process/in-memory** — fine for
   a single instance, not for multiple replicas. TODOs point at Redis. Idempotency records are
   also persisted to Postgres, so replay protection survives a restart even though the cache doesn't.
-- **Camera, signature, and PIN are native-only by design** (plan.md §1) — the web renderer ships
-  simple stand-ins (file picker / canvas / plain input) so the whole flow can still be walked in
-  a browser. On iOS, blur detection in the camera step is a stub (always "not blurry"); face
-  presence via Vision is real.
+- **Camera, signature, and PIN are native-only by design** — these steps need device hardware
+  (camera, biometrics-backed secure input) that a browser can't provide, so the web renderer ships
+  simple stand-ins (file picker / canvas / plain input) instead, so the whole flow can still be
+  walked in a browser. On iOS, blur detection in the camera step is a stub (always "not blurry");
+  face presence via Vision is real.
 - **T&C HTML is injected via `innerHTML`** with no sanitizer allow-list yet — acceptable while
   legal copy is same-origin and ops-controlled, worth revisiting if that source ever changes.
 - **Web config (base URL, session, token) lives in `localStorage`** for standalone demo use.
@@ -164,9 +167,9 @@ it left off once maintenance clears.
 - **No in-process "publish" endpoint for flow versions** — `flow_versions.published_at` exists
   but isn't gated against current time; the v14→v15 repair demo above uses a seed-holdback
   instead.
-- **Some wire-format names are POC inventions, not verbatim from plan.md**, which describes
-  behavior rather than JSON shape. `docs/contract.md` is the binding spec for names like repair
-  kinds (`reaccept_document`/`collect_fields`/`redo_step`), error codes
+- **Some wire-format names are POC inventions**, made up while turning the design into JSON rather
+  than carried over from an existing spec. `docs/contract.md` is the binding source of truth for
+  names like repair kinds (`reaccept_document`/`collect_fields`/`redo_step`), error codes
   (`validation_failed`/`stale_document`/`idempotency_key_reused`), and the `force_update`
   capability-gate shape.
 - **iPhone-only** — no iPad or rotation support, by design.
